@@ -3,9 +3,8 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
 session_start();
-
+echo "<!-- Session Status: " . (empty($_SESSION) ? 'Empty' : 'Active') . " -->";
 // Redirect if already logged in
 if(isset($_SESSION['user_id'])) {
     header("Location: " . ($_SESSION['role'] === 'admin' ? 'admin/dashboard.php' : 'tenant/dashboard.php'));

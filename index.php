@@ -56,14 +56,14 @@ if(isset($_SESSION['user_id'])) {
                     <h5 class="card-title text-center">Room Information</h5>
                     <p class="card-text text-center">Learn about our available rooms and pricing options.</p>
                     <div class="text-center mt-3">
-                        <a href="#" class="btn btn-outline-primary">
+                        <a href="rooms.php" class="btn btn-outline-primary">
                             <i class="bi bi-search"></i> View Rooms
                         </a>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-4 mb-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
@@ -73,7 +73,7 @@ if(isset($_SESSION['user_id'])) {
                     <h5 class="card-title text-center">Contact Us</h5>
                     <p class="card-text text-center">Have questions? Reach out our management team.</p>
                     <div class="text-center mt-3">
-                        <a href="#" class="btn btn-outline-primary">
+                        <a href="contact.php" class="btn btn-outline-primary">
                             <i class="bi bi-info-circle"></i> Contact Information
                         </a>
                     </div>

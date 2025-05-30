@@ -1,61 +1,80 @@
-<?php 
-require_once '../../includes/auth_check.php';
+<?php
+require_once __DIR__ . '/../../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/db_connect.php';
+
 if($_SESSION['role'] !== 'admin') {
     header("Location: ../../login.php");
     exit();
 }
 
-// Get all inquiries with tenant information
-$stmt = $pdo->query("
-    SELECT i.*, 
-           t.first_name, t.last_name,
-           CASE WHEN i.status = 'pending' THEN 0 ELSE 1 END AS status_order
-    FROM inquiries i
-    JOIN tenants t ON i.tenant_id = t.id
-    ORDER BY status_order, i.created_at DESC
-");
-$inquiries = $stmt->fetchAll();
+$status = $_GET['status'] ?? 'all';
+$sql = "SELECT * FROM inquiries";
 
-// Handle reply submission
-if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reply'])) {
-    $inquiryId = $_POST['inquiry_id'];
-    $reply = trim($_POST['reply']);
-    
-    if(empty($reply)) {
-        $_SESSION['error'] = "Reply cannot be empty!";
-    } else {
-        $stmt = $pdo->prepare("UPDATE inquiries SET admin_reply = ?, status = 'answered', updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$reply, $inquiryId]);
-        
-        $_SESSION['success'] = "Reply submitted successfully!";
-        header("Location: index.php");
-        exit();
-    }
+if($status !== 'all') {
+    $sql .= " WHERE status = :status";
 }
+
+$sql .= " ORDER BY created_at DESC";
+$stmt = $pdo->prepare($sql);
+
+if($status !== 'all') {
+    $stmt->bindParam(':status', $status);
+}
+
+$stmt->execute();
+$inquiries = $stmt->fetchAll();
 ?>
 
 <?php include '../../includes/header.php'; ?>
 
 <div class="row">
     <div class="col-md-12">
-        <h1 class="mb-4">Tenant Inquiries</h1>
-        
-        <?php if(isset($_SESSION['success'])): ?>
-            <div class="alert alert-success"><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-question-circle"></i> Inquiry Management</h1>
+            <a href="add.php" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Inquiry
+            </a>
+        </div>
+
+        <!-- Status Filter Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link <?= $status === 'all' ? 'active' : '' ?>" href="index.php">All Inquiries</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $status === 'new' ? 'active' : '' ?>" href="index.php?status=new">New</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $status === 'pending' ? 'active' : '' ?>" href="index.php?status=pending">Pending</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $status === 'resolved' ? 'active' : '' ?>" href="index.php?status=resolved">Resolved</a>
+            </li>
+        </ul>
+
+        <?php if(isset($_GET['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show">
+                <?php 
+                echo match($_GET['success']) {
+                    'added' => 'Inquiry added successfully!',
+                    'updated' => 'Inquiry updated successfully!',
+                    'deleted' => 'Inquiry deleted successfully!',
+                    default => 'Operation completed successfully!'
+                };
+                ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         <?php endif; ?>
-        
-        <?php if(isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
-        <?php endif; ?>
-        
-        <div class="card">
+
+        <div class="card shadow-sm">
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
-                        <thead class="table-dark">
+                        <thead>
                             <tr>
                                 <th>Date</th>
-                                <th>Tenant</th>
+                                <th>Name</th>
+                                <th>Contact</th>
                                 <th>Subject</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -64,75 +83,49 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reply'])) {
                         <tbody>
                             <?php foreach($inquiries as $inquiry): ?>
                             <tr>
-                                <td><?php echo date('M d, Y', strtotime($inquiry['created_at'])); ?></td>
-                                <td><?php echo $inquiry['first_name'] . ' ' . $inquiry['last_name']; ?></td>
-                                <td><?php echo htmlspecialchars($inquiry['subject']); ?></td>
+                                <td><?= date('M d, Y', strtotime($inquiry['created_at'])) ?></td>
+                                <td><?= htmlspecialchars($inquiry['name']) ?></td>
                                 <td>
-                                    <span class="badge bg-<?php echo $inquiry['status'] == 'pending' ? 'warning' : 'success'; ?>">
-                                        <?php echo ucfirst($inquiry['status']); ?>
+                                    <?= htmlspecialchars($inquiry['email']) ?><br>
+                                    <?= htmlspecialchars($inquiry['phone']) ?>
+                                </td>
+                                <td><?= htmlspecialchars($inquiry['subject']) ?></td>
+                                <td>
+                                    <span class="badge bg-<?= 
+                                        $inquiry['status'] === 'resolved' ? 'success' : 
+                                        ($inquiry['status'] === 'pending' ? 'warning' : 'info')
+                                    ?>">
+                                        <?= ucfirst($inquiry['status']) ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" 
-                                        data-bs-target="#inquiryModal<?php echo $inquiry['id']; ?>">
-                                        View/Reply
-                                    </button>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="view.php?id=<?= $inquiry['id'] ?>" class="btn btn-outline-primary" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="edit.php?id=<?= $inquiry['id'] ?>" class="btn btn-outline-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="delete.php?id=<?= $inquiry['id'] ?>" 
+                                           class="btn btn-outline-danger" 
+                                           title="Delete"
+                                           onclick="return confirm('Are you sure you want to delete this inquiry?')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
-                            
-                            <!-- Modal for each inquiry -->
-                            <div class="modal fade" id="inquiryModal<?php echo $inquiry['id']; ?>" tabindex="-1">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">Inquiry from <?php echo $inquiry['first_name'] . ' ' . $inquiry['last_name']; ?></h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <p><strong>Submitted:</strong> <?php echo date('M d, Y h:i A', strtotime($inquiry['created_at'])); ?></p>
-                                            <p><strong>Subject:</strong> <?php echo htmlspecialchars($inquiry['subject']); ?></p>
-                                            <div class="mb-3 p-3 bg-light rounded">
-                                                <strong>Tenant's Message:</strong>
-                                                <p><?php echo nl2br(htmlspecialchars($inquiry['message'])); ?></p>
-                                            </div>
-                                            
-                                            <?php if($inquiry['status'] == 'answered'): ?>
-                                            <div class="mb-3 p-3 bg-info bg-opacity-10 rounded">
-                                                <strong>Your Response:</strong>
-                                                <p><?php echo nl2br(htmlspecialchars($inquiry['admin_reply'])); ?></p>
-                                                <small class="text-muted">Last updated: <?php echo date('M d, Y h:i A', strtotime($inquiry['updated_at'])); ?></small>
-                                            </div>
-                                            <?php endif; ?>
-                                            
-                                            <form method="POST">
-                                                <input type="hidden" name="inquiry_id" value="<?php echo $inquiry['id']; ?>">
-                                                <div class="mb-3">
-                                                    <label for="reply<?php echo $inquiry['id']; ?>" class="form-label">
-                                                        <?php echo $inquiry['status'] == 'answered' ? 'Update Response' : 'Your Response'; ?>
-                                                    </label>
-                                                    <textarea class="form-control" id="reply<?php echo $inquiry['id']; ?>" 
-                                                        name="reply" rows="5" required><?php 
-                                                        echo $inquiry['status'] == 'answered' ? htmlspecialchars($inquiry['admin_reply']) : ''; 
-                                                    ?></textarea>
-                                                </div>
-                                                <button type="submit" class="btn btn-primary">
-                                                    <?php echo $inquiry['status'] == 'answered' ? 'Update Response' : 'Submit Response'; ?>
-                                                </button>
-                                            </form>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+
+                <?php if(empty($inquiries)): ?>
+                    <div class="alert alert-info mt-3">No inquiries found</div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
 
-<?php include '../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>

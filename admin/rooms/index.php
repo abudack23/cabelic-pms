@@ -1,78 +1,41 @@
 <?php
-require_once '../../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/db_connect.php';
+
 if($_SESSION['role'] !== 'admin') {
     header("Location: ../../login.php");
     exit();
 }
 
-// Get all rooms
-$stmt = $pdo->query("SELECT * FROM rooms ORDER BY room_number");
+$search = $_GET['search'] ?? '';
+$status_filter = $_GET['status'] ?? 'all';
+
+// CORRECTED SQL QUERY - using subquery instead of join
+$sql = "SELECT r.*, 
+        (SELECT COUNT(*) FROM rentals WHERE room_id = r.id AND status = 'active') as tenant_count 
+        FROM rooms r";
+
+$conditions = [];
+$params = [];
+
+if (!empty($search)) {
+    $conditions[] = "(r.room_number LIKE :search OR r.type LIKE :search OR r.description LIKE :search)";
+    $params[':search'] = "%$search%";
+}
+
+if ($status_filter !== 'all') {
+    $conditions[] = "r.status = :status";
+    $params[':status'] = $status_filter;
+}
+
+if (!empty($conditions)) {
+    $sql .= " WHERE " . implode(" AND ", $conditions);
+}
+
+$sql .= " ORDER BY r.room_number";
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $rooms = $stmt->fetchAll();
+
+include __DIR__ . '/../../includes/header.php';
 ?>
-
-<?php include '../../includes/header.php'; ?>
-
-<div class="row">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="bi bi-house-door"></i> Room Management</h1>
-            <a href="add.php" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add New Room
-            </a>
-        </div>
-        
-        <?php if(isset($_SESSION['success'])): ?>
-            <div class="alert alert-success">
-                <?= $_SESSION['success']; unset($_SESSION['success']); ?>
-            </div>
-        <?php endif; ?>
-        
-        <div class="card">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>Room #</th>
-                                <th>Type</th>
-                                <th>Price (₱)</th>
-                                <th>Capacity</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach($rooms as $room): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($room['room_number']) ?></td>
-                                <td><?= htmlspecialchars($room['room_type']) ?></td>
-                                <td><?= number_format($room['price'], 2) ?></td>
-                                <td><?= $room['capacity'] ?></td>
-                                <td>
-                                    <span class="badge bg-<?= 
-                                        $room['status'] == 'available' ? 'success' : 
-                                        ($room['status'] == 'occupied' ? 'danger' : 'warning') 
-                                    ?>">
-                                        <?= ucfirst($room['status']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="edit.php?id=<?= $room['id'] ?>" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil-square"></i> Edit
-                                    </a>
-                                    <a href="delete.php?id=<?= $room['id'] ?>" class="btn btn-sm btn-outline-danger" 
-                                       onclick="return confirm('Are you sure you want to delete this room?')">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<?php include '../../includes/footer.php'; ?>

@@ -29,6 +29,7 @@ if($_SESSION['role'] !== 'admin') {
         </div>
     </div>
     
+    <!-- Occupied Rooms Card - Corrected link -->
     <div class="col-md-3 mb-4">
         <div class="card bg-success text-white">
             <div class="card-body">
@@ -38,11 +39,12 @@ if($_SESSION['role'] !== 'admin') {
                 $occupiedRooms = $stmt->fetchColumn();
                 ?>
                 <h2><?php echo $occupiedRooms; ?></h2>
-                <a href="rooms/index.php" class="text-white">View Occupied</a>
+                <a href="rooms/index.php?status=occupied" class="text-white">View Occupied</a>
             </div>
         </div>
     </div>
     
+    <!-- Active Tenants Card - Unchanged -->
     <div class="col-md-3 mb-4">
         <div class="card bg-info text-white">
             <div class="card-body">
@@ -56,13 +58,12 @@ if($_SESSION['role'] !== 'admin') {
             </div>
         </div>
     </div>
-    
+    <!-- Pending Payments Card - Unchanged -->
     <div class="col-md-3 mb-4">
         <div class="card bg-warning text-dark">
             <div class="card-body">
                 <h5 class="card-title">Pending Payments</h5>
                 <?php
-                // This would need a more complex query based on your payment logic
                 $pendingPayments = 0;
                 ?>
                 <h2><?php echo $pendingPayments; ?></h2>
@@ -72,6 +73,7 @@ if($_SESSION['role'] !== 'admin') {
     </div>
 </div>
 
+<!-- Rest of your dashboard remains EXACTLY the same -->
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
@@ -144,7 +146,7 @@ if($_SESSION['role'] !== 'admin') {
     </div>
 </div>
 
-<!-- New Quick Links Section -->
+<!-- Quick Links Section - Corrected Add Room link -->
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
@@ -153,18 +155,10 @@ if($_SESSION['role'] !== 'admin') {
             </div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-3">
-                    <a href="tenants/add.php" class="btn btn-outline-primary">
-                        <i class="bi bi-person-plus"></i> Add New Tenant
-                    </a>
-                    <a href="rooms/add.php" class="btn btn-outline-primary">
-                        <i class="bi bi-house-add"></i> Add New Room
-                    </a>
-                    <a href="payments/add.php" class="btn btn-outline-primary">
-                        <i class="bi bi-cash-coin"></i> Record Payment
-                    </a>
-                    <a href="inquiries/" class="btn btn-outline-primary">
-                        <i class="bi bi-question-circle"></i> View Inquiries
-                    </a>
+                    <a href="tenants/add.php" class="btn btn-outline-primary">Add New Tenant</a>
+                    <a href="rooms/add.php" class="btn btn-outline-primary">Add New Room</a>
+                    <a href="payments/add.php" class="btn btn-outline-primary">Record Payment</a>
+                    <a href="inquiries/" class="btn btn-outline-primary">View Inquiries</a>
                 </div>
             </div>
         </div>

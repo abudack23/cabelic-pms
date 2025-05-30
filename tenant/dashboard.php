@@ -1,5 +1,7 @@
 <?php 
-require_once '../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/auth_check.php';
+require_once __DIR__ . '/../../includes/db_connect.php';
+
 if($_SESSION['role'] !== 'tenant') {
     header("Location: ../login.php");
     exit();
@@ -124,4 +126,4 @@ if ($rental) {
     </div>
 </div>
 
-<?php include '../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
